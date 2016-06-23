@@ -1,0 +1,657 @@
+'''
+Snake!... old Snake game with little modifications like hidden food in the grass or water blocks you from getting the food so you have to push the box to the water and many other new things.
+you can play it with accelerometer or with normal touch input.
+ 
+
+Have fun and comment the new features you want to be added to the game.
+'''
+import pygame
+pygame.init()
+import sys
+import random
+try:
+    import android
+except ImportError:
+    android = None
+try:
+    import android.mixer as mixer
+except:
+    try:
+        import android_mixer as mixer
+    except:
+        mixer=None
+sys.path.insert(0,"D:\\programming\\python\\pyroid")
+import advertise
+########### from pys60 control handling ##########
+
+#event=[key_code,function]
+events=[]
+#mouse_event=[area,function]
+mouse_events=[]
+#swap_event=[direction,function]
+#direction='up' or 'down' or 'left' or 'right'
+swap_events=[]
+long_swap_events=[]
+long_=0
+
+def check_dir_acc():
+    p=android.accelerometer_reading()
+    x=p[0]
+    y=p[1]
+    if x>0 and abs(x)>abs(y):
+        return "left"
+    elif x<0 and abs(x)>abs(y):
+        return "right"
+    elif y>0 and abs(x)<abs(y):
+        return "down"
+    elif y<0 and abs(x)<abs(y):
+        return "up"
+    else:
+        return ""
+def check_in(pos,area):
+	if pos[0]>=area[0] and pos[0]<=area[2]:
+		if pos[1]>=area[1] and pos[1]<=area[3]:
+			return 1
+	return 0
+def check_dir(threshold=5):
+    global long_
+    long_=0
+    long_threshold=100
+    ch=pygame.mouse.get_rel()
+    direction=""
+    if ch[1]<0 and abs(ch[1])>abs(ch[0]) and abs(ch[1])>threshold:
+        if abs(ch[1])>long_threshold:
+            long_=1
+        direction="up"
+    elif ch[1]>0 and abs(ch[1])>abs(ch[0]) and abs(ch[1])>threshold:
+        if abs(ch[1])>long_threshold:
+            long_=1
+        direction="down"
+    elif ch[0]<0 and abs(ch[1])<abs(ch[0]) and abs(ch[0])>threshold:
+        if abs(ch[0])>long_threshold:
+            long_=1
+        direction="left"
+    elif ch[0]>0 and abs(ch[1])<abs(ch[0]) and abs(ch[0])>threshold:
+        if abs(ch[0])>long_threshold:
+            long_=1
+        direction="right"
+    else:
+        direction=""
+    return direction
+
+def ao_yield():
+    global events,mouse_events,swap_events,long_swap_events
+    ###### swap_events
+    dire=check_dir()
+    for sw in swap_events:
+        if sw[0]==dire and pygame.mouse.get_pressed()[0]==1:
+            sw[1]()
+    for sw in long_swap_events:
+        if sw[0]==dire and pygame.mouse.get_pressed()[0]==1 and long_==1:
+            sw[1]()
+    ###### mouse_events
+    mouse_pos=pygame.mouse.get_pos()
+    for ev in mouse_events:
+        res=check_in(mouse_pos,ev[0])
+        if res==1 and pygame.mouse.get_pressed()[0]==1:
+            ev[1]()
+            if mixer:
+                mixer.music.play()
+    ###### keys_events
+    for event in pygame.event.get():
+        try:
+            events[1][0](event)
+        except:
+            pass
+        if event.type==pygame.QUIT:
+            sys.exit()
+        elif event.type==pygame.KEYDOWN:
+            for arr in events:
+                if event.key==arr[0]:
+                    arr[1]()
+                    try:
+                        events[0][0]()
+                    except:
+                        pass
+                    #arr[1]()
+                    
+def ao_sleep(ti):
+    pygame.time.wait(int(ti*1000))
+
+class Ao_lock:
+    def __init__(self):
+        self.running=1
+    def wait(self):
+        self.running=1
+        try:
+            events[0][0]()
+        except:
+            pass
+        while self.running:
+            ao_yield()
+    def signal(self):
+        self.running=0
+
+######### prepare globals #########
+
+try:
+    path=""
+    slow=0.07
+    accelerometer=1
+    if mixer:
+        mixer.music.load(path+"click.mp3")
+    #block=graphics.Image.new((20,20))
+    #block.clear((111,111,111))
+    block=pygame.image.load(path+'Block.png')
+    block=pygame.transform.scale(block,(20,20))
+
+    grass=pygame.image.load(path+'Grass.png')
+    grass=pygame.transform.scale(grass,(20,20))
+
+    water=pygame.image.load(path+'Water.png')
+    water=pygame.transform.scale(water,(20,20))
+
+    box=pygame.image.load(path+'Box.png')
+    box=pygame.transform.scale(box,(20,20))
+
+    hole=pygame.image.load(path+'Hole.png')
+    hole=pygame.transform.scale(hole,(20,20))
+
+    game_map=None
+    win_cond=None
+except:
+	print "error preparing globals"
+
+
+######### levels ###########
+
+def level1():
+    global game_map,win_cond
+    win_cond=10
+    enemies=0
+    game_map=[
+ [1,1,1,1,1,1,1,1,1,1,1,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,1,1,1,1,1,1,1,1,1,1,1]]
+
+
+def level2():
+    global game_map,win_cond
+    win_cond=10
+    enemies=0
+    game_map=[
+ [1,1,1,1,1,1,1,1,1,1,1,1]
+,[1,0,0,0,0,0,2,0,0,0,0,1]
+,[1,0,0,0,0,0,2,0,0,0,0,1]
+,[1,0,0,0,0,0,2,0,0,0,0,1]
+,[1,1,1,1,1,1,2,2,2,2,2,1]
+,[1,0,0,0,0,0,2,0,0,0,0,1]
+,[1,0,0,0,0,0,2,0,0,0,0,1]
+,[1,0,0,0,0,0,2,0,0,0,0,1]
+,[1,1,1,1,1,1,2,0,0,0,0,1]
+,[1,0,0,0,0,0,2,0,0,0,0,1]
+,[1,0,0,0,0,0,2,0,0,0,0,1]
+,[1,0,0,0,0,0,2,0,0,0,0,1]
+,[1,1,1,1,1,1,2,2,2,2,2,1]
+,[1,0,0,0,0,0,2,0,0,0,0,1]
+,[1,3,3,3,3,3,2,3,3,3,3,1]
+,[1,1,1,1,1,1,1,1,1,1,1,1]]
+
+
+def level3():
+    global game_map,win_cond
+    win_cond=10
+    enemies=0
+    game_map=[
+ [1,1,1,1,1,1,1,1,1,1,1,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,4,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,3,3,1,3,3,3,3,1,3,3,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,1,1,1,1,1,1,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,4,0,0,0,0,0,0,0,1]
+,[1,1,1,1,1,1,1,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,1,1,1,1,1,1,1,1,1,1,1]]
+
+def level4():
+    global game_map,win_cond
+    win_cond=10
+    game_map=[
+ [1,1,1,1,1,1,1,1,1,1,1,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,4,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,4,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,4,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,3,3,3,3,3,3,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,1,1,1,1,1,1,1,1,1,1,1]]
+    holes=5
+    hole_pos=(random.randint(1,10),random.randint(1,14))
+    for i in range(holes):
+        while game_map[hole_pos[1]][hole_pos[0]]<>0:
+            hole_pos=(random.randint(1,10),random.randint(1,14))
+        game_map[hole_pos[1]][hole_pos[0]]=5
+
+
+
+def random_level():
+    global game_map,win_cond
+    win_cond=10
+    enemies=0
+    game_map=[
+ [1,1,1,1,1,1,1,1,1,1,1,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,0,0,0,0,0,0,0,0,0,0,1]
+,[1,1,1,1,1,1,1,1,1,1,1,1]]
+    blocks=random.randint(0,15)
+    boxes=random.randint(0,15)
+    grasses=random.randint(0,15)
+    waters=random.randint(0,15)
+    holes=random.randint(0,15)
+    elems=[blocks,boxes,grasses,waters,holes]
+    for el in elems:
+        el_pos=(random.randint(1,10),random.randint(1,14))
+        for i in range(el):
+            while game_map[el_pos[1]][el_pos[0]]<>0:
+                el_pos=(random.randint(1,10),random.randint(1,14))
+            game_map[el_pos[1]][el_pos[0]]=elems.index(el)+1
+
+
+    
+###### game_engine ########
+class game:
+    def __init__(self,levels=[]):
+        self.skip_pos=[]
+        self.skip=0
+        self.levels=levels
+        self.curr_level=0
+        self.levels[self.curr_level]()
+        self.map=pygame.Surface((240,320))
+        self.draw_map()
+        self.check_target()
+        self.length=1
+        self.w=6
+        #self.food=graphics.Image.new((5,5))
+        #self.food.clear()
+        self.food=pygame.image.load(path+'Food.png')
+        self.food=pygame.transform.scale(self.food,(5,5))
+        self.worm_piece=pygame.Surface((5,5))
+        self.worm_piece.fill((225,225,0))
+        self.running=1
+        self.pausebit=0
+        self.lock=Ao_lock()
+        self.lpos=[[115,160]]
+        self.pos=[120,160]
+        self.mybg=pygame.Surface((240,320))
+        self.mybg.fill((0,0,0))
+        self.op_bg=pygame.Surface((190,320))
+        self.op_bg.fill((0,0,0))
+        self.resume=pygame.image.load(path+'resume.png')
+        self.speed_up=pygame.image.load(path+'speed_up.png')
+        self.speed_down=pygame.image.load(path+'speed_down.png')
+        self.exit=pygame.image.load(path+'exit.png')
+        self.acc_toggle=pygame.image.load(path+'acc_toggle.png')
+        self.skip_bu=pygame.image.load(path+'skip.png')
+        self.help=pygame.image.load(path+'help.png')
+        self.helpL=pygame.image.load(path+'helpL.png')
+        self.opt_icon=pygame.image.load(path+'settings.png')
+        self.rand_icon=pygame.image.load(path+'random.png')
+        self.exit_small=pygame.image.load(path+'exit_small.png')
+        self.opt=0
+        self.canvas=pygame.display.set_mode((240,320))
+    def acc(self):
+        global accelerometer
+        accelerometer=1-accelerometer
+    def speed(self,x=0):
+        global slow
+        if x:
+            slow-=0.01
+            if slow<=0.07:
+                slow=0.07
+        else:
+            slow+=0.01
+            if slow>=0.5:
+                slow=0.5
+    def instructions(self):
+        global mouse_events,swap_events
+        self.slide=0
+        temp=mouse_events
+        temp1=swap_events
+        swap_events=[]
+        mouse_events=[]
+        mouse_events.append([(0,0,240,320),self.stop_help])
+        play=pygame.image.load(path+'play.png')
+        about=pygame.image.load(path+'about.png')
+        run=1
+        while run:
+            if self.slide==0:
+                self.canvas.blit(play,(0,0))
+                pygame.display.update()
+                ao_sleep(0.05)
+                ao_yield()
+            elif self.slide==1:
+                self.canvas.blit(play,(0,0))
+                pygame.display.update()
+                ao_sleep(0.05)
+                ao_yield()
+            elif self.slide==2:
+                self.canvas.blit(about,(0,0))
+                pygame.display.update()
+                ao_sleep(0.05)
+                ao_yield()
+            else:
+                run=0
+                ao_sleep(0.1)
+                ao_yield()
+        mouse_events=temp
+        swap_events=temp1
+    def stop_help(self):
+        self.slide+=1
+    def options(self):
+        global mouse_events,swap_events
+        self.pause()
+        self.opt=1
+        temp=mouse_events
+        temp1=swap_events
+        swap_events=[]
+        mouse_events=[]
+        mouse_events.append([(190,0,240,50),self.pause])
+        mouse_events.append([(190,50,240,100),lambda:self.speed(1)])
+        mouse_events.append([(190,100,240,150),self.speed])
+        mouse_events.append([(190,150,240,200),self.stop])
+        mouse_events.append([(190,200,240,250),self.instructions])
+        mouse_events.append([(190,250,240,300),self.acc])
+        while self.pausebit==1:
+            self.op_bg.blit(self.resume,(0,0))
+            self.op_bg.blit(self.speed_up,(0,50))
+            self.op_bg.blit(self.speed_down,(0,100))
+            self.op_bg.blit(self.exit,(0,150))
+            self.op_bg.blit(self.helpL,(0,200))
+            self.op_bg.blit(self.acc_toggle,(0,250))
+            self.mybg.blit(self.op_bg,(190,0))
+            self.canvas.blit(self.mybg,(0,0))
+            pygame.display.update()
+            ao_sleep(0.1)
+            ao_yield()
+        self.opt=0
+        mouse_events=temp
+        swap_events=temp1
+    def skip_toggle(self):
+        self.skip=1-self.skip
+    def stop(self):
+        self.pause()
+        self.running=0
+    def pause(self):
+        if self.opt==1:
+            mouse_events.pop()
+            mouse_events.pop()
+            mouse_events.pop()
+            mouse_events.pop()
+            mouse_events.pop()
+            mouse_events.pop()
+        if self.pausebit:
+            self.lock.signal()
+            self.pausebit=0
+        else:
+            self.pausebit=1
+            #self.lock.wait()
+    def draw_map(self):
+        #print "drawing map"
+        self.map.fill((0,0,0))
+        x=0
+        y=0
+        for l in game_map:
+            for b in l:
+                if b==1:
+                    self.map.blit(block,(x,y))
+                elif b==2:
+                    self.map.blit(grass,(x,y))
+                elif b==3:
+                    self.map.blit(water,(x,y))
+                elif b==4:
+                    self.map.blit(box,(x,y))
+                elif b==6:
+                    self.map.blit(hole,(x,y))
+                #elif b==5:
+                #    self.map.blit(grass,(x,y))
+                x+=20
+            x=0
+            y+=20
+        #print "map drawing done"
+    def up(self):
+        self.w=2
+        self.draw()
+    def down(self):
+        self.w=8
+        self.draw()
+    def left(self):
+        self.w=4
+        self.draw()
+    def right(self):
+        self.w=6
+        self.draw()
+    def five_target(self):
+        while self.target[0]%5<>0:
+            self.target[0]+=1
+        while self.target[1]%5<>0:
+            self.target[1]+=1
+    def check_target(self):
+        self.target=[random.randint(0,235),random.randint(0,315)]
+        self.five_target()
+        target=[int(self.target[0]/20),int(self.target[1]/20)]
+        while game_map[target[1]][target[0]]==1 or game_map[target[1]][target[0]]==3 or game_map[target[1]][target[0]]==5 or game_map[target[1]][target[0]]==6:
+            self.target=[random.randint(0,235),random.randint(0,315)]
+            self.five_target()
+            target=[int(self.target[0]/20),int(self.target[1]/20)]
+    def splash(self,message):
+        #self.mybg.text((90,150),message,(225,0,0))
+        self.canvas.blit(self.mybg,(0,0))
+        self.pause()
+    def win(self):
+        if self.curr_level+1==len(self.levels):
+            self.splash(u'YOU WIN !!')
+            self.stop()
+            return
+        else:
+            self.curr_level+=1
+        self.length=1
+        self.lpos=[[115,160]]
+        self.pos=[120,160]
+        self.levels[self.curr_level]()
+        self.check_target()
+        self.draw_map()
+        self.splash(u'Level '+str(self.curr_level+1)+u' !!')
+    def move(self):
+        #global slow
+        #print "moving"
+        if self.pos==self.target:
+            self.check_target()
+            self.length+=1
+            if self.length==win_cond:
+                self.win()
+        self.lpos.insert(0,[self.pos[0],self.pos[1]])
+        if len(self.lpos)>self.length+1:
+            self.lpos.pop()
+        if self.w==2:
+            self.pos[1]-=5
+        elif self.w==8:
+            self.pos[1]+=5
+        elif self.w==6:
+            self.pos[0]+=5
+        elif self.w==4:
+            self.pos[0]-=5
+        pos=(int(self.pos[0]/20),int(self.pos[1]/20))
+        if game_map[pos[1]][pos[0]]==1 or game_map[pos[1]][pos[0]]==3 or game_map[pos[1]][pos[0]]==5 or game_map[pos[1]][pos[0]]==6:
+            self.length=1
+            self.lpos=[[115,160]]
+            self.pos=[120,160]
+            if game_map[pos[1]][pos[0]]==5:
+                game_map[pos[1]][pos[0]]=6
+                self.draw_map()
+        elif game_map[pos[1]][pos[0]]==4 and self.skip==0:
+            prev_pos=[pos[0],pos[1]]
+            try:
+                if self.w==8:
+                    pos=(int(self.pos[0]/20),int(self.pos[1]/20)+1)
+                elif self.w==2:
+                    pos=(int(self.pos[0]/20),int(self.pos[1]/20)-1)
+                elif self.w==6:
+                    pos=(int(self.pos[0]/20)+1,int(self.pos[1]/20))
+                elif self.w==4:
+                    pos=(int(self.pos[0]/20)-1,int(self.pos[1]/20))
+                try:
+                    self.skip_pos.index(prev_pos)
+                    self.draw()
+                    return
+                except:
+                    pass
+                if game_map[pos[1]][pos[0]]<>3 and game_map[pos[1]][pos[0]]<>1 and game_map[pos[1]][pos[0]]<>6  and game_map[pos[1]][pos[0]]<>5:
+                    game_map[prev_pos[1]][prev_pos[0]]=0
+                    game_map[pos[1]][pos[0]]=4
+                else:
+                    if game_map[pos[1]][pos[0]]==3:
+                        game_map[prev_pos[1]][prev_pos[0]]=0
+                        game_map[pos[1]][pos[0]]=4
+                        self.skip_pos.append([pos[0],pos[1]])
+                    elif game_map[pos[1]][pos[0]]==4:
+                        game_map[prev_pos[1]][prev_pos[0]]=4
+                    elif game_map[pos[1]][pos[0]]==5:
+                        game_map[prev_pos[1]][prev_pos[0]]=0
+                        game_map[pos[1]][pos[0]]=6
+                    self.skip=1
+            except:
+                pass
+            self.draw_map()
+        self.draw()
+    def draw(self,x=0):
+        #print "drawing"
+        self.mybg.fill((0,0,0))
+        #print "mybg clear done"
+        self.mybg.blit(self.map,(0,0))
+        #print "mybg blit map done"
+        self.mybg.blit(self.food,self.target)
+        if self.skip:
+            self.worm_piece.fill((211,211,211))
+        else:
+            self.worm_piece.fill((225,225,0))
+        for i in range(self.length):
+            self.mybg.blit(self.worm_piece,self.lpos[i])
+        if self.skip:
+            self.worm_piece.fill((111,111,111))
+        else:
+            self.worm_piece.fill((225,0,0))
+        
+        self.mybg.blit(self.worm_piece,self.pos)
+        #self.mybg.text((0,10),u'I am now '+str(self.length)+u' cm',(0,225,0))
+        #print "mybg text done"
+        self.mybg.blit(self.help,(220,0))
+        self.mybg.blit(self.skip_bu,(0,0))
+        self.mybg.blit(self.opt_icon,(40,0))
+        self.mybg.blit(self.rand_icon,(100,0))
+        self.mybg.blit(self.exit_small,(160,0))
+        self.canvas.blit(self.mybg,(0,0))
+        pygame.display.update()
+        #print "canvas blitting done"
+        #print "drawing Done !!"
+
+######## test_area #########
+
+
+g=game([level1,level2,level3,level4,random_level])
+
+
+def ranl():
+    random_level()
+    g.draw_map()
+
+mouse_events.append([(0,0,20,20),g.skip_toggle])
+mouse_events.append([(220,0,240,20),g.instructions])
+mouse_events.append([(40,0,60,20),g.options])
+mouse_events.append([(100,0,120,20),ranl])
+mouse_events.append([(160,0,180,20),g.stop])
+swap_events.append(['up',g.up])
+swap_events.append(['down',g.down])
+swap_events.append(['left',g.left])
+swap_events.append(['right',g.right])
+
+def main():
+    try:
+        adv=advertise.advertise('http://ammar.pythonanywhere.com/adv/snake',g.canvas,(0,0),(240,320))
+        while adv.show:
+            adv.adv_cont.read_input()
+            pygame.display.update()
+    except:
+        pass
+    #print "running1"
+    if android:
+        android.init()
+        android.map_key(android.KEYCODE_BACK, pygame.QUIT)
+    while g.running:
+        if android:
+            android.accelerometer_enable(bool(accelerometer))
+            if accelerometer:
+                d=check_dir_acc()
+                if d=="up":
+                    g.up()
+                elif d=="down":
+                    g.down()
+                elif d=="left":
+                    g.left()
+                elif d=="right":
+                    g.right()
+                else:
+                    pass
+        #print "running2"
+        g.move()
+        #print "moved"
+        try:
+            ao_sleep(slow)
+        except:
+            pass
+        ao_yield()
+
+main()
+print '#########################'
+print 'Programmed by Ammar Rajab'
+print '#########################'
+print '\t\t(^__^)'
